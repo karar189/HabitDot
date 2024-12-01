@@ -1,0 +1,121 @@
+name: Deploy React App to AWS S3
+
+on:
+  push:
+    branches:
+      - merge/test # staging4.catoff.xyz
+      - dev # staging5.catoff.xyz
+      - main # devnet-game.catoff.xyz
+      - mainnet-staging # staging-mainnet.catoff.xyz
+      - mainnet-prod # game.catoff.xyz
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Set environment variable based on branch
+        run: |
+          if [ "${{ github.ref_name }}" == "dev" ]; then
+            echo "VITE_STAGE=dev" >> $GITHUB_ENV
+            echo "AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET_STAGING5_CATOFF_XYZ }}" >> $GITHUB_ENV
+            echo "Deploying branch 'dev' to staging environment"
+          elif [ "${{ github.ref_name }}" == "main" ]; then
+            echo "VITE_STAGE=main" >> $GITHUB_ENV
+            echo "AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET_DEVNET_GAME_CATOFF_XYZ }}" >> $GITHUB_ENV
+            echo "Deploying branch 'main' to devnet environment"
+          elif [ "${{ github.ref_name }}" == "merge/test" ]; then
+            echo "VITE_STAGE=merge" >> $GITHUB_ENV
+            echo "AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET_STAGING4_CATOFF_XYZ }}" >> $GITHUB_ENV
+            echo "Deploying branch 'merge/test' to fix environment"
+          elif [ "${{ github.ref_name }}" == "mainnet-staging" ]; then
+            echo "VITE_STAGE=mainnetTest" >> $GITHUB_ENV
+            echo "AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET_STAGING_MAINNET_CATOFF_XYZ }}" >> $GITHUB_ENV
+            echo "Deploying branch 'mainnet-staging' to mainnet staging environment"
+          elif [ "${{ github.ref_name }}" == "mainnet-prod" ]; then
+            echo "VITE_STAGE=mainnetProd" >> $GITHUB_ENV
+            echo "AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET_GAME_CATOFF_XYZ }}" >> $GITHUB_ENV
+            echo "Deploying branch 'mainnet-prod' to mainnet production environment"
+          fi
+
+      - name: Set environment variable for Okto Client API Key based on branch
+        run: |
+          if [ "${{ github.ref_name }}" == "mainnet-staging" ] || [ "${{ github.ref_name }}" == "mainnet-prod" ]; then
+            echo "VITE_OKTO_CLIENT_API_KEY=${{ secrets.VITE_OKTO_CLIENT_API_KEY_PRODUCTION }}" >> $GITHUB_ENV
+          else
+            echo "VITE_OKTO_CLIENT_API_KEY=${{ secrets.VITE_OKTO_CLIENT_API_KEY }}" >> $GITHUB_ENV
+          fi
+
+      - name: Set additional environment variables
+        run: |
+            echo "VITE_ONMETA_CLIENT=${{ secrets.VITE_ONMETA_CLIENT }}" >> $GITHUB_ENV
+
+      - name: Build
+        env:
+          VITE_STAGE: ${{ env.VITE_STAGE }}
+          VITE_OKTO_CLIENT_API_KEY: ${{ env.VITE_OKTO_CLIENT_API_KEY }}
+          VITE_RPC_LINK: ${{ env.VITE_RPC_LINK }}
+          VITE_ONMETA_CLIENT: ${{ secrets.VITE_ONMETA_CLIENT }}
+        run: npm run build
+
+      - name: List build directory
+        run: ls -la build
+
+      - name: Deploy to AWS S3
+        uses: jakejarvis/s3-sync-action@master
+        with:
+          args: --follow-symlinks --delete
+        env:
+          AWS_S3_BUCKET: ${{ env.AWS_S3_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "ap-south-1"
+          SOURCE_DIR: "build"
+
+      - name: Verify AWS CLI configuration
+        run: aws s3 ls s3://${{ env.AWS_S3_BUCKET }}/
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "ap-south-1"
+
+      - name: Set Cache-Control headers for HTML files
+        run: |
+          aws s3 cp s3://${{ env.AWS_S3_BUCKET }}/index.html s3://${{ env.AWS_S3_BUCKET }}/index.html --metadata-directive REPLACE --cache-control max-age=0,no-cache,no-store,must-revalidate --content-type text/html
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "ap-south-1"
+
+      - name: Set Cache-Control headers for webp files
+        run: |
+          aws s3 cp s3://${{ env.AWS_S3_BUCKET }}/Catoff-512.webp s3://${{ env.AWS_S3_BUCKET }}/Catoff-512.webp --metadata-directive REPLACE --cache-control max-age=0,no-cache,no-store,must-revalidate
+          aws s3 cp s3://${{ env.AWS_S3_BUCKET }}/icon.webp s3://${{ env.AWS_S3_BUCKET }}/icon.webp --metadata-directive REPLACE --cache-control max-age=0,no-cache,no-store,must-revalidate
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "ap-south-1"
+
+      - name: Set Cache-Control headers for all files in assets folder
+        run: |
+          aws s3 sync s3://${{ env.AWS_S3_BUCKET }}/assets/ s3://${{ env.AWS_S3_BUCKET }}/assets/ --metadata-directive REPLACE --cache-control max-age=0,no-cache,no-store,must-revalidate
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "ap-south-1"
+
+      - name: Purge Cloudflare Cache
+        run: |
+          curl -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CLOUDFLARE_ZONE_ID }}/purge_cache" \
+          -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+          -H "Content-Type: application/json" \
+          --data '{"purge_everything":true}'
