@@ -1,0 +1,17 @@
+{
+  "name": "start-offer-up",
+  "script": "start-offer-up.js",
+  "permit": "start-offer-up-permit.json",
+  "bundles": [
+    {
+      "entrypoint": "../src/offer-up.contract.js",
+      "bundleID": "b1-a3c5f012fbca878b511ecb8f074a39b905e2e4c11880a4bab154bc02ad86fed3e0fba6a3373658012399f260cde4b6b4efc610c0c268ff1be6e214052d7ba416",
+      "fileName": "/root/.agoric/cache/b1-a3c5f012fbca878b511ecb8f074a39b905e2e4c11880a4bab154bc02ad86fed3e0fba6a3373658012399f260cde4b6b4efc610c0c268ff1be6e214052d7ba416.json"
+    },
+    {
+      "entrypoint": "../src/offer-up-proposal.js",
+      "bundleID": "b1-de963e06f16fa4970ce55a690ba2bdc52e46d0401da23349c4d7ec2b0d283adf4bd7383e585c03de8ed8beec6642a22b6c2026b1998ba717f2e6dc47804990e1",
+      "fileName": "/root/.agoric/cache/b1-de963e06f16fa4970ce55a690ba2bdc52e46d0401da23349c4d7ec2b0d283adf4bd7383e585c03de8ed8beec6642a22b6c2026b1998ba717f2e6dc47804990e1.json"
+    }
+  ]
+}

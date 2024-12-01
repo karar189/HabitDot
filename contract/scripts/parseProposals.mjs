@@ -23,7 +23,7 @@ const parseProposalParts = txt => {
   });
   evals.length || Fail`No swingset-core-eval found in proposal output: ${txt}`;
 
-  const bundles = [...txt.matchAll(/swingset install-bundle @([^\n]+)/gm)].map(
+  const bundles = [...txt.matchAll(/swingset install-bundle @(\S+)/gm)].map(
     ([, bundle]) => bundle,
   );
   bundles.length || Fail`No bundles found in proposal output: ${txt}`;

@@ -4,7 +4,7 @@
  * Creates files for starting an instance of the contract:
  * * contract source and instantiation proposal bundles to be published via
  *   `agd tx swingset install-bundle`
- * * start-offer-up-permit.json and start-offer-up.js to submit the
+ * * start-habit-permit.json and start-habit.js to submit the
  *   instantiation proposal via `agd tx gov submit-proposal swingset-core-eval`
  *
  * Usage:
@@ -12,23 +12,19 @@
  */
 
 import { makeHelpers } from '@agoric/deploy-script-support';
-import { getManifestForOfferUp } from '../src/offer-up-proposal.js';
+import { getManifestForHabit } from '../src/habit-proposal.js';
 
 /** @type {import('@agoric/deploy-script-support/src/externalTypes.js').ProposalBuilder} */
-export const offerUpProposalBuilder = async ({ publishRef, install }) => {
+export const habitProposalBuilder = async ({ publishRef, install }) => {
   return harden({
-    sourceSpec: '../src/offer-up-proposal.js',
+    sourceSpec: '../src/habit-proposal.js',
     getManifestCall: [
-      getManifestForOfferUp.name,
+      getManifestForHabit.name,
       {
-        offerUpRef: publishRef(
-          install(
-            '../src/offer-up.contract.js',
-            '../bundles/bundle-offer-up.js',
-            {
-              persist: true,
-            },
-          ),
+        habitRef: publishRef(
+          install('../src/habit.contract.js', '../bundles/bundle-habit.js', {
+            persist: true,
+          }),
         ),
       },
     ],
@@ -38,5 +34,5 @@ export const offerUpProposalBuilder = async ({ publishRef, install }) => {
 /** @type {DeployScriptFunction} */
 export default async (homeP, endowments) => {
   const { writeCoreProposal } = await makeHelpers(homeP, endowments);
-  await writeCoreProposal('start-offer-up', offerUpProposalBuilder);
+  await writeCoreProposal('start-habit', habitProposalBuilder);
 };

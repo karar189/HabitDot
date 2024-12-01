@@ -20,7 +20,7 @@ install_bundle() {
     --chain-id=agoriclocal -bblock --yes -o json
 }
 
-# exit fail if bundle-list is emtpy
+# exit fail if bundle-list is empty
 [ -s bundles/bundle-list ] || exit 1
 
 make balance-q  # do we have enough IST?

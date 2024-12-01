@@ -3,8 +3,8 @@ set -xueo pipefail
 
 cd /workspace/contract
 
-SCRIPT=start-offer-up.js
-PERMIT=start-offer-up-permit.json
+SCRIPT=start-habit.js
+PERMIT=start-habit-permit.json
 ls -sh "$SCRIPT" "$PERMIT"
 
 PROPOSAL=$(agd query gov proposals --output json | jq -c '.proposals | length | .+1')
@@ -12,7 +12,7 @@ PROPOSAL=$(agd query gov proposals --output json | jq -c '.proposals | length | 
 make fund-acct
 
 agd tx gov submit-proposal swingset-core-eval "$PERMIT" "$SCRIPT" \
-  --title="Start Offer Up Contract" --description="Evaluate $SCRIPT" \
+  --title="Start Habit Contract" --description="Evaluate $SCRIPT" \
   --deposit=10000000ubld --gas=auto --gas-adjustment=1.2 \
   --from user1 --chain-id agoriclocal --keyring-backend=test \
   --yes -b block
@@ -32,4 +32,4 @@ parseInstances() {
 # check that the contract was actually started
 api=http://localhost:1317
 curl $api/agoric/vstorage/data/published.agoricNames.instance \
-  | parseInstances | grep offerUp
+  | parseInstances | grep habit
