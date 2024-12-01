@@ -1,4 +1,5 @@
 # HabiDot: The Future of Fitness Challenges on Web3
+<img width="823" alt="Screenshot 2024-12-01 at 8 53 02 PM" src="https://github.com/user-attachments/assets/81bffb15-6500-49c3-ab2a-8f7552b91289">
 
 HabiDot is a cutting-edge Web3 application designed to revolutionize fitness challenges by combining the power of blockchain technology with AI-driven motion tracking.
 
