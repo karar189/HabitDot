@@ -1,6 +1,6 @@
 CHAINID=agoriclocal
 USER1ADDR=$(shell agd keys show user1 -a --keyring-backend="test")
-ACCT_ADDR=$(USER1ADDR)
+ACCT_ADDR=agoric1c2j9h4tf7tkmn6aznr3qxzsd0c495xh58swe5m
 BLD=000000ubld
 
 ATOM_DENOM=ibc/BA313C4A19DFBF943586C0387E6B11286F9E416B4DD27574E6909CABE0E342FA
