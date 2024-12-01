@@ -53,6 +53,7 @@
     "runWaitForBlocks": "cd contract && yarn make:waitForBlocks"
   },
   "dependencies": {
+    "@agoric/marshal": "^0.5.0",
     "eslint": "^8.57.0"
   },
   "devDependencies": {

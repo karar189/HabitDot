@@ -6,7 +6,7 @@ const deployContract = async (zoe, board, wallet, tokenIssuer) => {
   console.log('Starting Habit Proposal...');
 
   // Install the Habit contract on Zoe
-  const bundleId = await E(board).getValue('habitBundleId'); // Use the actual bundleId for habit.contract.js
+  const bundleId = await E(board).getValue('id');
   const installation = await E(zoe).install(bundleId);
 
   console.log('Contract Installed:', installation);
