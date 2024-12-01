@@ -1,24 +1,45 @@
 import { E } from '@agoric/eventual-send';
-import { makeIssuerKit } from '@agoric/ertp';
-import { Far } from '@agoric/marshal';
-import { assert } from '@agoric/assert';
+import { makeIssuerKit, AmountMath } from '@agoric/ertp';
 
-/**
- * @param {ZCF} zcf
- * @param {object} privateArgs
- */
-export const start = (zcf, privateArgs) => {
-  // Create a reward points issuer
+const buildRootObject = () => {
+  const VALIDATOR_ROLE = 'VALIDATOR_ROLE';
+  const DEFAULT_ADMIN_ROLE = 'DEFAULT_ADMIN_ROLE';
+
+  const habits = new Map(); // User address -> Habit ID -> Habit Object
+  const userHabits = new Map(); // User address -> List of habit IDs
+  const pendingApprovals = new Map(); // User -> Habit ID -> Approval Status
+
+  const whitelistedTokens = new Map(); // Whitelisted token brands
+  const validators = new Set(); // Addresses with validator permissions
+  let owner;
+
+  // Rewards
+  let dailyReward = 1n; // Default reward
+  let profitMultiplier = 1n;
+  let breakEvenRatio = 75n; // Default break-even ratio
+
+  // Initialize token mint for rewards
   const {
     issuer: rewardIssuer,
     mint: rewardMint,
     brand: rewardBrand,
-  } = makeIssuerKit('HabitRewards');
+  } = makeIssuerKit('RewardPoints', 'nat');
 
-  // Persistent state for habits
-  const habits = new Map();
-  const userHabits = new Map();
-  const pendingApprovals = new Map();
+  const setOwner = address => {
+    owner = address;
+    return `Owner set to ${address}`;
+  };
+
+  const setGlobalParameters = (caller, params) => {
+    assert(caller === owner, 'Only the owner can set global parameters');
+    const { newDailyReward, newProfitMultiplier, newBreakEvenRatio } = params;
+    dailyReward = newDailyReward || dailyReward;
+    profitMultiplier = newProfitMultiplier || profitMultiplier;
+    breakEvenRatio = newBreakEvenRatio || breakEvenRatio;
+  
+    return `Global parameters updated: DailyReward=${dailyReward}, ProfitMultiplier=${profitMultiplier}, BreakEvenRatio=${breakEvenRatio}`;
+  };
+  
 
   // Configuration constants
   const DAILY_REWARD = 1n;
@@ -84,6 +105,8 @@ export const start = (zcf, privateArgs) => {
    * @returns {string} Check-in approval confirmation
    */
   const approveCheckIn = (validator, user, habitId) => {
+    assert(validators.has(validator), 'Caller is not a validator');
+
     const habitKey = `${user}-${habitId}`;
     const habit = habits.get(habitKey);
 
@@ -108,6 +131,10 @@ export const start = (zcf, privateArgs) => {
 
     habit.rewardPoints += dailyReward;
 
+    // Mint reward tokens for the user
+    const rewardAmount = AmountMath.make(rewardBrand, BigInt(habit.rewardPoints));
+    rewardMint.mintPayment(rewardAmount);
+
     // Clear approval
     pendingApprovals.delete(habitKey);
 
@@ -117,18 +144,52 @@ export const start = (zcf, privateArgs) => {
     return `Check-in approved for habit ${habitId} by ${validator}`;
   };
 
-  // Public and creator facets
-  const publicFacet = Far('PublicFacet', {
-    checkIn,
-  });
+  const whitelistToken = async (caller, tokenIssuer, tokenBrand) => {
+    assert(caller === owner, 'Only the owner can whitelist tokens');
+    const isMatchingIssuer = await E(tokenBrand).isMyIssuer(tokenIssuer);
+    assert(isMatchingIssuer, 'Issuer and brand do not match');
+    whitelistedTokens.set(tokenBrand, true);
+    return `Token ${tokenBrand} successfully whitelisted`;
+  };
+  
+  const assignValidator = (caller, validator) => {
+    assert(caller === owner, 'Only the owner can assign validators');
+    validators.add(validator);
+    return `Validator ${validator} assigned`;
+  };
+  
+  const revokeValidator = (caller, validator) => {
+    assert(caller === owner, 'Only the owner can revoke validators');
+    validators.delete(validator);
+    return `Validator ${validator} revoked`;
+  };
 
-  const creatorFacet = Far('CreatorFacet', {
-    startHabit,
-    approveCheckIn,
-  });
+  const getHabit = (user, habitId) => {
+    const habitKey = `${user}-${habitId}`;
+    const habit = habits.get(habitKey);
+    return habit ? harden({ ...habit }) : 'Habit not found';
+  };
+  
+
+  const getGlobalParameters = () => {
+    return {
+      dailyReward,
+      profitMultiplier,
+      breakEvenRatio,
+    };
+  };
 
   return harden({
-    publicFacet,
-    creatorFacet,
+    setOwner,
+    setGlobalParameters,
+    startHabit,
+    checkIn,
+    approveCheckIn,
+    whitelistToken,
+    assignValidator,
+    revokeValidator,
+    getHabit,
+    getGlobalParameters,
+    rewardIssuer, // Expose the rewardIssuer for token management
   });
 };
